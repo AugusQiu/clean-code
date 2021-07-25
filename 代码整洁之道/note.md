@@ -487,7 +487,8 @@ console.log('Employee name: ' + employee.getName()); // Employee name: John Doe
 // 闭包实现私有化的另一个方式，构造函数内 定义局部变量 和特权函数，其实例只能通过特权函数来访问此变量，变量被约束在了constructor域内
 function Person() {
     var name = 'Eric' //私有属性，通过实例对象不能访问
-
+    
+    // 这里的this指向window
     this.getName = function() {
         return name; // 外界访问不到函数内局部变量，这里就是利用闭包暴露出去
     }
@@ -514,3 +515,254 @@ console.log(p.getNameTest())// undefined
 
 // 还有一点，上面的getName，setName方法既可以访问私有属性，也可以访问实例对象的共有属性，成为特权方法 
 ````
+## 类
+### 单一职责原则(SRP)
+修改一个类的理由不应该超过一个     
+不要将太多功能硬塞进一个类里面。如果一个类有太多太杂的功能，当你对其中一小部分进行修改时，就很难想象一个修改会对其它依赖模块带来怎样的影响  
+````js
+// 反例
+class UserSettings{
+  constructor(user){
+    this.user = user;
+  }
+
+  changeSettings(settings){
+    if(this.verifyCredentials(user)){
+      // ......
+    }
+  }
+
+  verifyCredentials(user){
+     // ......
+  }
+}
+````
+````js
+// 正例
+class UserAuth{
+  constructor(user){
+    this.user = user
+  }
+
+  verifyCredentials(user){
+    // ......
+  }
+}
+
+class UserSettings{
+  constructor(user){
+    this.user = user
+    this.auth = new UserAuth(user)
+  }
+
+  changeSetting(settings){
+    if(this.auth.verifyCredentials()){
+      //......
+    }
+  }
+}
+````
+### 开放封闭原则（OCP)
+代码实体（类、模块、函数等）应当是易于扩展、难于修改的  
+这一原则指的是我们应允许用户方便扩展模块的功能，但是不需要再打开js文件源码手动修改
+````js
+class AjaxRequester{
+   constructor(){
+     this.HTTP_METHODS = ['POST','PUT','GET']
+   }
+
+   get(url){
+     // ...
+   }
+   
+   // 自由添加http请求类型
+   addHTTPMethod(method){
+     this.HTTP_METHODS.push(method)
+   }
+}
+````
+### 利斯科夫替代原则（LSP）
+子类对象应该能够替换其超类对象被使用，子类尽量不要重写父类的方法
+### 接口隔离原则（ISP)
+客户端不应该依赖它不需要的接口，一个类对另一个类的依赖应该建立在最小的接口上  
+当js中，当一个类需要许多参数设置才能生成一个对象时，或许大多时候不需要设置这么多的参数，此时应该减少对配置参数数量的需求  
+````js
+// 反例
+class DOMTraverser{
+  constructor(settings){
+    this.settings = settings
+    this.setup()
+  }
+
+  setup(){
+    this.rootNode = this.settings.rootNode;
+    this.settings.animationModule.setup()
+  }
+}
+
+let $ = new DOMTraverser({
+    rootNode: document.getElementsByTagName('body'),
+    animationModule: function(){} // 这个选项貌似不需要
+})
+````
+````js
+class DOMTraverser{
+   constructor(settings){
+     this.settings = settings;
+     this.options = settings.options;
+     this.setup()
+   }
+
+   setup(){
+     this.rootNode = this.settings.rootNode;
+     this.setupOptions();
+   }
+
+   setupOptions(){
+     if(this.options.animationModule){
+       //...
+     }
+   }
+}
+
+let $ = new DOMTraverser({
+  rootNode: document.getElementsByTagName('body'),
+  options: {
+    animationModule: function() {}
+  }
+})
+````
+### 依赖反转原则（DIP)
+该原则有两个核心点：
+* 1. 高层模块不应该依赖于地层模块，它们都应该依赖于抽象接口
+* 2. 抽象接口应该脱离具体实现，具体实现应该依赖于抽象接口  
+````js
+// 正例
+class InventoryTracker {
+  constructor(items, requester) {
+    this.items = items;
+    this.requester = requester;
+  }
+
+  requestItems() {
+    this.items.forEach((item) => {
+      this.requester.requestItem(item);
+    });
+  }
+}
+
+class InventoryRequesterV1 {
+  constructor() {
+    this.REQ_METHODS = ['HTTP'];
+  }
+
+  requestItem(item) {
+    // ...
+  }
+}
+
+class InventoryRequesterV2 {
+  constructor() {
+    this.REQ_METHODS = ['WS'];
+  }
+
+  requestItem(item) {
+    // ...
+  }
+}
+
+// By constructing our dependencies externally and injecting them, we can easily
+// substitute our request module for a fancy new one that uses WebSockets.
+let inventoryTracker = new InventoryTracker(['apples', 'bananas'], new InventoryRequesterV2());
+inventoryTracker.requestItems();
+````
+我个人觉得这个示例不太清晰，可以看这个例子[设计原则之依赖倒置js](https://www.cnblogs.com/netUserAdd/p/10436694.html)  
+比如说高层是一个人，抽象出来的接口是定义“吃”这个行为，吃什么是下层模块具体实现的，吃米饭、吃面条、吃包子等
+
+### 使用ES6的classes而不是ES5的Function
+### 使用方法链
+有的人觉得方法链不够干净且违反了德米特法则（一个类或对象对于其他类、对象知道的越少越好），但这种方法在js及许多库(jq)中显得非常实用  
+````js
+// 在class的函数这灵活返回this
+class Person{
+  constructor(){
+    this.name  = 'qgq'
+    this.age   = 23
+    this.color = 'yellow'
+  }
+
+  setName(name){
+    this.name = name
+    return this
+  }
+
+  setAge(age){
+    this.age = age
+    return this
+  }
+
+  setColor(color){
+    this.color = color
+    return this
+  }
+
+  save(){
+    console.log(this.name,this.age,this.color)
+  }
+}
+
+let p = new Person()
+       .setColor('pink')
+       .setName('abc')
+       .setAge(12)
+       .save()
+````
+### 优先使用组合模式而非继承
+在使用继承之前，可以多想想是否能通过组合模式来满足需求呢  
+什么时候该用继承，而非组合？
+* 继承关系表现为“是一个“而非”有一个“（如动物 -> 人)
+* 子类可以复用基类的代码
+* 希望当基类改变时，所有派生类都受到影响
+````js
+// 反例
+class Employee{
+  constructor(name,email){
+    this.name  = name
+    this.emial = email
+  }
+}
+
+// 不应该用继承，因为员工 是有 税收，税收并不是员工的一种类型
+class EmployeeTaxData extends Employee{
+  constructor(ssn,salary){
+    super()
+    this.ssn = ssn
+    this.salary = salary
+  }
+}
+````
+````js
+class Employee{
+   constructor(name,email){
+     this.name  = name;
+     this.email = email;
+   }
+
+   setTaxData(ssn,salary){
+     this.taxData = new EmployeeTaxData(ssn,salary)
+   }
+   // ...
+}
+
+class EmployeeTaxData {
+  constructor(ssn, salary) {
+    this.ssn = ssn;
+    this.salary = salary;
+  }
+  // ...
+}
+````
+
+
+
+
