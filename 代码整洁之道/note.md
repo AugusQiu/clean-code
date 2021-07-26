@@ -762,7 +762,60 @@ class EmployeeTaxData {
   // ...
 }
 ````
+## 并发
+### 用Promises替代callback回调，防止出现“回调地狱”
+````js
+require('request-promise').get('https://en.wikipedia.org/wiki/Robert_Cecil_Martin')
+  .then(function(response) {
+    return require('fs-promise').writeFile('article.html', response);
+  })
+  .then(function() {
+    console.log('File written');
+  })
+  .catch(function(err) {
+    console.error(err);
+  })
+````
+### async/await是较Promises更好的选择
+````js
+async function getCleanCodeArticle() {
+  try {
+    var request = await require('request-promise')
+    var response = await request.get('https://en.wikipedia.org/wiki/Robert_Cecil_Martin');
+    var fileHandle = await require('fs-promise');
+
+    await fileHandle.writeFile('article.html', response);
+    console.log('File written');
+  } catch(err) {
+    console.log(err);
+  }
+}
+````
+## 错误处理
+### try/catch 捕获错误
+````js
+try {
+  functionThatMightThrow();
+} catch (error) {
+  console.error(error);
+  notifyUserOfError(error);
+  reportErrorToService(error);
+}
 
 
+getdata()
+.then(data => {
+  functionThatMightThrow(data);
+})
+.catch(error => {
+  console.error(error);
+  notifyUserOfError(error);
+  reportErrorToService(error);
+});
+````
+## 格式化
+### 定义变量、函数名风格一致性
+### 调用函数的函数和被调函数应放在较近的位置
 
-
+## 注释
+### 只对业务逻辑复杂的代码进行注释，不用过多无谓注释
